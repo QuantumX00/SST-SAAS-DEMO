@@ -1,3 +1,4 @@
+import { SST_FOLDER_TEMPLATE } from "../src/data/sstTemplate.js";
 import { fileStatus, initialPortfolios, timestamp } from "./data.js";
 
 // La vista de carpetas consulta esta clave al generar la plantilla.
@@ -5,6 +6,27 @@ import { fileStatus, initialPortfolios, timestamp } from "./data.js";
 export const TOKEN_KEY = "sst_pages_unused_session";
 
 const portfolios = initialPortfolios();
+const workspaces = new Map();
+
+function workspaceFor(company) {
+  if (!workspaces.has(company.id)) {
+    workspaces.set(company.id, { folders: [], files: [], logs: [] });
+  }
+  return workspaces.get(company.id);
+}
+
+function guideFolders(nodes, parentId = null) {
+  return nodes.flatMap(({ name, children = [] }) => {
+    const id = crypto.randomUUID();
+    return [
+      {
+        id, name, parent_id: parentId, fromGuide: true,
+        providerNote: "Usa esta carpeta para organizar los soportes de este tema del SG-SST. Nota de ejemplo del proveedor.",
+      },
+      ...guideFolders(children, id),
+    ];
+  });
+}
 let activeId = portfolios[0].company.id;
 
 export const demoCompanies = () => portfolios.map(({ company }) => company);
@@ -50,7 +72,8 @@ function log(portfolio, action, details) {
 }
 
 async function request(method, path, payload, config) {
-  const [, resource, id, subresource, findingId] = path.split("/");
+  const explorer = path.startsWith("/explorer/");
+  const [, resource, id, subresource, findingId] = (explorer ? path.slice("/explorer".length) : path).split("/");
   if (resource === "companies") {
     if (method === "GET") return { data: demoCompanies() };
     if (method === "POST") {
@@ -61,21 +84,41 @@ async function request(method, path, payload, config) {
   }
 
   const companyId = config?.headers?.["X-Company-Id"] ?? activeId;
-  const portfolio = portfolios.find(({ company }) => company.id === companyId);
-  if (!portfolio) throw new Error("Selecciona una empresa de la demostración.");
+  const companyPortfolio = portfolios.find(({ company }) => company.id === companyId);
+  if (!companyPortfolio) throw new Error("Selecciona una empresa de la demostración.");
 
+  const workspace = workspaceFor(companyPortfolio.company);
+  const portfolio = explorer ? workspace : companyPortfolio;
   const { folders, files, audits, logs } = portfolio;
+  if (explorer && resource === "guide" && method === "POST") {
+    if (folders.some((folder) => folder.fromGuide)) {
+      throw new Error("La estructura guía ya está en el explorador.");
+    }
+    const generated = guideFolders(SST_FOLDER_TEMPLATE);
+    folders.push(...generated);
+    return { data: generated.length };
+  }
+  if (explorer && resource === "folders" && subresource === "notes" && method === "POST") {
+    const folder = byId(folders, id);
+    folder.personalNotes ??= [];
+    const note = add(folder.personalNotes, { text: payload.text });
+    return { data: note };
+  }
   if (resource === "folders") {
-    if (method === "GET") return { data: folderTree(portfolio) };
+    if (method === "GET") return { data: folderTree(explorer ? workspace : {
+      folders: [...folders, ...workspace.folders],
+      files: [...files, ...workspace.files],
+    }) };
     if (method === "POST") return { data: add(folders, payload) };
     if (method === "PATCH") {
       const folder = byId(folders, id);
       const { name, notes } = payload;
+      if (explorer && folder.fromGuide) throw new Error("La carpeta pertenece a la estructura guía.");
       if (typeof name === "string" && name.trim() && name.trim() !== folder.name) {
         log(portfolio, "RENOMBRAR_CARPETA", `${folder.name} → ${name.trim()}`);
         folder.name = name.trim();
       }
-      if (typeof notes === "string" && notes !== (folder.notes ?? "")) {
+      if (!explorer && typeof notes === "string" && notes !== (folder.notes ?? "")) {
         folder.notes = notes;
         log(portfolio, "EDITAR_NOTA", folder.name);
       }
@@ -91,18 +134,21 @@ async function request(method, path, payload, config) {
 
   if (resource === "files") {
     if (method === "GET" && !id) {
-      return { data: files.map((file) => ({ ...file, status: fileStatus(file.expiration_date) })) };
+      return { data: (explorer ? files : [...files, ...workspace.files]).map((file) => ({ ...file, status: fileStatus(file.expiration_date) })) };
     }
     if (method === "GET" && subresource === "download") {
       const file = byId(files, id);
       log(portfolio, "DESCARGAR", file.name);
-      return { data: new Blob([`SST SaaS · Demostración visual\n${file.name}\nContenido sintético.\n`]) };
+      return { data: new Blob([`SST SaaS · Demostración visual\n${file.name}\nContenido sintético.\n`], { type: "text/plain;charset=utf-8" }) };
     }
     if (method === "POST" && id === "upload") {
       // Se descartan tanto el nombre original como los bytes del archivo.
+      const folderId = payload.get("folder_id") || null;
+      if (explorer && folderId) byId(folders, folderId);
+      if (explorer) workspace.uploadCount = (workspace.uploadCount ?? 0) + 1;
       const file = add(files, {
-        name: "Documento cargado (muestra).txt",
-        folder_id: payload.get("folder_id"),
+        name: explorer ? `Documento de muestra ${workspace.uploadCount}.txt` : "Documento cargado (muestra).txt",
+        folder_id: folderId,
         is_critical: payload.get("is_critical") === "true",
         expiration_date: payload.get("expiration_date"),
         uploaded_at: timestamp(),
@@ -116,6 +162,14 @@ async function request(method, path, payload, config) {
       log(portfolio, "ELIMINAR_ARCHIVO", file.name);
       return { data: null };
     }
+  }
+
+  if (explorer && resource === "activity" && method === "GET") {
+    const actions = ["SUBIR", "DESCARGAR", "ELIMINAR_ARCHIVO"];
+    const summarize = (entries) => Object.fromEntries(actions.map((action) => [
+      action, entries.filter((item) => item.action === action).length,
+    ]));
+    return { data: { session: summarize(workspace.logs), example: summarize(companyPortfolio.logs) } };
   }
 
   if (resource === "audit-logs" && method === "GET") return { data: [...logs] };

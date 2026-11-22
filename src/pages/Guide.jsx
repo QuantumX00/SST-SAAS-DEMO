@@ -100,8 +100,8 @@ const statusGuide = [
 const explorerSteps = {
   "/empresas": { desc: "Registra las empresas de tu portafolio y elige con cuál trabajar en el selector Empresa activa." },
   "/carpetas": { to: "/archivos", cta: "Abrir explorador documental" },
-  "/archivos": { desc: "Abre una carpeta para consultar y cargar documentos de muestra. Puedes editar su nombre y sus notas desde la misma vista.", cta: "Abrir explorador documental" },
-  "/trazabilidad": { desc: "Consulta el historial de operaciones simuladas, como cargas, descargas, eliminaciones y cambios de carpeta." },
+  "/archivos": { desc: "Abre una carpeta para consultar y cargar documentos de muestra. Puedes añadir notas personales y renombrar tus carpetas desde la misma vista.", cta: "Abrir explorador documental" },
+  "/trazabilidad": { title: "6. Consulta el informe de actividad", to: "/actividad", cta: "Abrir informe de actividad", desc: "Revisa los documentos, sus vencimientos y las operaciones simuladas durante la sesión." },
 };
 
 export default function Guide({ explorer = false }) {

@@ -27,7 +27,13 @@ const navItems = [
   { to: "/trazabilidad", label: "Trazabilidad", icon: History, manage: true },
 ];
 
+const buyerLabels = {
+  "/archivos": "Explorador documental",
+  "/trazabilidad": "Informe de actividad",
+};
+
 export default function Layout({ demo = false }) {
+  const demoLabels = demo ? buyerLabels : {};
   const [menuOpen, setMenuOpen] = useState(false);
   const mainRef = useRef(null);
   const { pathname } = useLocation();
@@ -117,7 +123,7 @@ export default function Layout({ demo = false }) {
           {visibleNav.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
-              to={to}
+              to={demo && to === "/trazabilidad" ? "/actividad" : to}
               onClick={() => {
                 setMenuOpen(false);
                 if (demo) mainRef.current?.focus({ preventScroll: true });
@@ -132,7 +138,7 @@ export default function Layout({ demo = false }) {
               }
             >
               <Icon className="h-5 w-5" />
-              {demo && to === "/archivos" ? "Explorador documental" : label}
+              {demoLabels[to] ?? label}
             </NavLink>
           ))}
         </nav>

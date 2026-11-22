@@ -2,13 +2,12 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import Layout from "../src/components/Layout.jsx";
-import Audit from "../src/pages/Audit.jsx";
+import Activity from "./Activity.jsx";
 import Companies from "../src/pages/Companies.jsx";
 import Dashboard from "../src/pages/Dashboard.jsx";
-import Folders from "../src/pages/Folders.jsx";
+import Explorer from "./Explorer.jsx";
 import Guide from "../src/pages/Guide.jsx";
 import SstAudits from "../src/pages/SstAudits.jsx";
-import client from "./client.js";
 import { DemoSession } from "./session.jsx";
 import "../src/index.css";
 import "./demo.css";
@@ -27,9 +26,10 @@ createRoot(document.getElementById("root")).render(
               <Route path="guia" element={<Guide explorer />} />
               <Route path="empresas" element={<Companies />} />
               <Route path="carpetas" element={<Navigate to="/archivos" replace />} />
-              <Route path="archivos" element={<Folders updateFolder={(id, changes) => client.patch(`/folders/${id}`, changes)} />} />
+              <Route path="archivos" element={<Explorer />} />
               <Route path="auditorias-sst" element={<SstAudits />} />
-              <Route path="trazabilidad" element={<Audit />} />
+              <Route path="trazabilidad" element={<Navigate to="/actividad" replace />} />
+              <Route path="actividad" element={<Activity />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
