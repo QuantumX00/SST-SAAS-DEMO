@@ -81,7 +81,8 @@ const STATUS_FILTERS = [
   { key: "LEY", label: "Exigidos por ley" },
 ];
 
-export default function Files() {
+export default function Files({ explorer = false, folderScope, folderTree } = {}) {
+  const scoped = folderScope !== undefined;
   const { companyId, canManage } = useAuth();
   const [files, setFiles] = useState([]);
   const [folders, setFolders] = useState([]);
@@ -106,16 +107,16 @@ export default function Files() {
     try {
       const [filesData, tree] = await Promise.all([
         listFiles(),
-        listFolderTree(),
+        scoped ? [] : folderTree ?? listFolderTree(),
       ]);
-      setFiles(filesData);
+      setFiles(scoped ? filesData.filter((entry) => (entry.folder_id ?? "") === folderScope) : filesData);
       setFolders(flattenFolders(tree));
     } catch (err) {
       setError(parseApiError(err));
     } finally {
       setLoading(false);
     }
-  }, [companyId]);
+  }, [companyId, folderScope, folderTree, scoped]);
 
   useEffect(() => {
     load();
@@ -129,10 +130,11 @@ export default function Files() {
     }
     setUploading(true);
     setError("");
+    const form = e.currentTarget;
     try {
       await uploadFile({
         file,
-        folderId: folderId || null,
+        folderId: (scoped ? folderScope : folderId) || null,
         isCritical,
         expirationDate: expiration || null,
       });
@@ -140,7 +142,7 @@ export default function Files() {
       setFolderId("");
       setIsCritical(false);
       setExpiration("");
-      e.target.reset?.();
+      form.reset();
       await load();
     } catch (err) {
       setError(parseApiError(err));
@@ -203,83 +205,85 @@ export default function Files() {
     return list;
   }, [files, statusFilter, query]);
 
+  const uploadForm = canManage && (
+    <Card title="Subir documento">
+      <form
+        onSubmit={handleUpload}
+        className={explorer ? "document-upload grid grid-cols-1 items-end gap-4" : "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 items-end"}
+      >
+        <label className={explorer ? "block min-w-0" : "block md:col-span-2"}>
+          <span className="mb-1 block text-sm font-medium text-slate-600">
+            Archivo (PDF, PNG, JPG, DOCX, XLSX)
+          </span>
+          <input
+            type="file"
+            accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx"
+            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            className="w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-brand-700"
+          />
+        </label>
+
+        {!scoped && <label className="block">
+          <span className="mb-1 block text-sm font-medium text-slate-600">
+            Carpeta destino
+          </span>
+          <select
+            value={folderId}
+            onChange={(e) => setFolderId(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+          >
+            <option value="">Raíz (sin carpeta)</option>
+            {folders.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </label>}
+
+        <Input
+          label="Fecha de vencimiento"
+          type="date"
+          value={expiration}
+          onChange={(e) => setExpiration(e.target.value)}
+        />
+
+        <label className={explorer ? "flex min-h-11 items-center gap-2" : "flex items-center gap-2 md:col-span-2"}>
+          <input
+            type="checkbox"
+            checked={isCritical}
+            onChange={(e) => setIsCritical(e.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+          />
+          <span className="flex items-center gap-1 text-sm text-slate-600">
+            <Scale className="h-4 w-4 text-amber-500" />
+            Documento exigido por ley (obligatorio en el SG-SST)
+          </span>
+        </label>
+
+        <div className={explorer ? "flex justify-end" : "md:col-span-2 lg:col-span-2 flex justify-end"}>
+          <Button type="submit" disabled={uploading}>
+            <Upload className="h-4 w-4" />
+            {uploading ? "Subiendo..." : "Subir documento"}
+          </Button>
+        </div>
+      </form>
+    </Card>
+  );
+
   return (
     <div className="space-y-6">
-      <div>
+      {!explorer && <div>
         <h1 className="text-2xl font-bold text-slate-800">Archivos</h1>
         <p className="text-sm text-slate-500">
           Documentos del portafolio con control de vencimiento y cumplimiento
           legal.
         </p>
-      </div>
+      </div>}
 
       <ErrorBanner message={error} />
 
-      {canManage && (
-        <Card title="Subir documento">
-          <form
-            onSubmit={handleUpload}
-            className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 items-end"
-          >
-            <label className="block md:col-span-2">
-              <span className="mb-1 block text-sm font-medium text-slate-600">
-                Archivo (PDF, PNG, JPG, DOCX, XLSX)
-              </span>
-              <input
-                type="file"
-                accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-                className="w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-brand-700"
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-600">
-                Carpeta destino
-              </span>
-              <select
-                value={folderId}
-                onChange={(e) => setFolderId(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-              >
-                <option value="">Raíz (sin carpeta)</option>
-                {folders.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <Input
-              label="Fecha de vencimiento"
-              type="date"
-              value={expiration}
-              onChange={(e) => setExpiration(e.target.value)}
-            />
-
-            <label className="flex items-center gap-2 md:col-span-2">
-              <input
-                type="checkbox"
-                checked={isCritical}
-                onChange={(e) => setIsCritical(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-              />
-              <span className="flex items-center gap-1 text-sm text-slate-600">
-                <Scale className="h-4 w-4 text-amber-500" />
-                Documento exigido por ley (obligatorio en el SG-SST)
-              </span>
-            </label>
-
-            <div className="md:col-span-2 lg:col-span-2 flex justify-end">
-              <Button type="submit" disabled={uploading}>
-                <Upload className="h-4 w-4" />
-                {uploading ? "Subiendo..." : "Subir documento"}
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
+      {!explorer && uploadForm}
 
       <Card
         title={`Documentos (${filtered.length}${
@@ -288,7 +292,7 @@ export default function Files() {
       >
         {/* Barra de filtros */}
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5 text-sm text-slate-400">
+          <div aria-hidden="true" className="hidden items-center gap-1.5 text-sm text-slate-400 sm:flex">
             <Filter className="h-4 w-4" />
           </div>
           <div className="flex flex-wrap gap-2">
@@ -316,11 +320,12 @@ export default function Files() {
               </button>
             ))}
           </div>
-          <div className="relative ml-auto">
+          <div className={explorer ? "document-search relative ml-auto" : "relative ml-auto"}>
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              aria-label="Buscar documento"
               placeholder="Buscar documento..."
               className="rounded-lg border border-slate-300 py-1.5 pl-8 pr-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
@@ -332,11 +337,11 @@ export default function Files() {
         ) : filtered.length === 0 ? (
           <p className="py-6 text-center text-sm text-slate-500">
             {files.length === 0
-              ? "No hay documentos en esta empresa todavía."
+              ? scoped ? "No hay documentos en esta ubicación." : "No hay documentos en esta empresa todavía."
               : "Ningún documento coincide con el filtro."}
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={explorer ? 0 : undefined} role={explorer ? "region" : undefined} aria-label={explorer ? "Tabla de documentos" : undefined}>
             <table className="min-w-full divide-y divide-slate-200">
               <thead>
                 <tr className="text-left text-xs font-medium uppercase text-slate-400">
@@ -358,13 +363,13 @@ export default function Files() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-3" data-label="Vencimiento">
                       <ExpirationCell file={f} />
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-3" data-label="Estado">
                       <StatusBadge status={f.status} />
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-3" data-label="Legal">
                       {f.is_critical ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
                           <Scale className="h-3 w-3" />
@@ -380,6 +385,7 @@ export default function Files() {
                           onClick={() => handleDownload(f)}
                           className="rounded p-1.5 text-slate-400 hover:bg-brand-50 hover:text-brand-600"
                           title="Descargar"
+                          aria-label="Descargar"
                         >
                           <Download className="h-4 w-4" />
                         </button>
@@ -388,6 +394,7 @@ export default function Files() {
                             onClick={() => handleDelete(f)}
                             className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
                             title="Eliminar"
+                            aria-label="Eliminar"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -401,6 +408,7 @@ export default function Files() {
           </div>
         )}
       </Card>
+      {explorer && uploadForm}
     </div>
   );
 }

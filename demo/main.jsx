@@ -5,10 +5,10 @@ import Layout from "../src/components/Layout.jsx";
 import Audit from "../src/pages/Audit.jsx";
 import Companies from "../src/pages/Companies.jsx";
 import Dashboard from "../src/pages/Dashboard.jsx";
-import Files from "../src/pages/Files.jsx";
 import Folders from "../src/pages/Folders.jsx";
 import Guide from "../src/pages/Guide.jsx";
 import SstAudits from "../src/pages/SstAudits.jsx";
+import client from "./client.js";
 import { DemoSession } from "./session.jsx";
 import "../src/index.css";
 import "./demo.css";
@@ -22,12 +22,12 @@ createRoot(document.getElementById("root")).render(
             <strong>Demostración visual</strong> · Datos sintéticos · Los cambios se reinician al recargar
           </p>
           <Routes>
-            <Route path="/" element={<Layout />}>
+            <Route path="/" element={<Layout demo />}>
               <Route index element={<Dashboard />} />
-              <Route path="guia" element={<Guide />} />
+              <Route path="guia" element={<Guide explorer />} />
               <Route path="empresas" element={<Companies />} />
-              <Route path="carpetas" element={<Folders />} />
-              <Route path="archivos" element={<Files />} />
+              <Route path="carpetas" element={<Navigate to="/archivos" replace />} />
+              <Route path="archivos" element={<Folders updateFolder={(id, changes) => client.patch(`/folders/${id}`, changes)} />} />
               <Route path="auditorias-sst" element={<SstAudits />} />
               <Route path="trazabilidad" element={<Audit />} />
             </Route>

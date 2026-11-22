@@ -35,8 +35,7 @@ export default function Companies() {
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Empresas</h1>
         <p className="text-sm text-slate-500">
-          Portafolio de empresas asesoradas. La empresa seleccionada define el
-          tenant activo en todo el sistema.
+          Registra las empresas de tu portafolio y selecciona con cuál quieres trabajar.
         </p>
       </div>
 
@@ -106,8 +105,8 @@ export default function Companies() {
                             </span>
                           </div>
                         </td>
-                        <td className="px-3 py-3 text-slate-500">{c.nit}</td>
-                        <td className="px-3 py-3">
+                        <td className="px-3 py-3 text-slate-500" data-label="NIT">{c.nit}</td>
+                        <td className="px-3 py-3" data-label="Estado">
                           {c.id === companyId ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
                               <CheckCircle2 className="h-3 w-3" /> Activa

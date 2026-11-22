@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Folder,
   FolderPlus,
@@ -16,9 +16,10 @@ import {
 import { TOKEN_KEY } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Card, Button, Input, ErrorBanner, Spinner, parseApiError } from "../components/ui.jsx";
+import Files from "./Files.jsx";
 import { SST_FOLDER_TEMPLATE, countTemplateFolders } from "../data/sstTemplate.js";
 
-function TreeNode({ node, depth, canManage, onCreateChild, onDelete }) {
+function TreeNode({ node, depth, canManage, onCreateChild, onDelete, onSelect, selectedId }) {
   const [open, setOpen] = useState(true);
   const hasChildren = node.children && node.children.length > 0;
 
@@ -26,15 +27,15 @@ function TreeNode({ node, depth, canManage, onCreateChild, onDelete }) {
     <div>
       <div
         className="group flex items-center justify-between rounded-lg px-2 py-1.5 hover:bg-slate-50"
-        style={{ paddingLeft: `${depth * 16 + 8}px` }}
+        style={{ paddingLeft: `${(onSelect ? Math.min(depth, 4) * 12 : depth * 16) + 8}px` }}
       >
-        <div className="flex items-center gap-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
           {hasChildren ? (
             <button
               onClick={() => setOpen(!open)}
-              aria-label={node.name}
+              aria-label={onSelect ? `Subcarpetas de ${node.name}` : node.name}
               aria-expanded={open}
-              className="text-slate-400"
+              className="tree-action text-slate-500"
             >
               {open ? (
                 <ChevronDown className="h-4 w-4" />
@@ -45,21 +46,35 @@ function TreeNode({ node, depth, canManage, onCreateChild, onDelete }) {
           ) : (
             <span className="inline-block w-4" />
           )}
-          <Folder className="h-4 w-4 text-brand-500" />
-          <span className="text-sm text-slate-700">{node.name}</span>
+          {onSelect ? (
+            <button
+              type="button"
+              aria-pressed={selectedId === node.id}
+              onClick={() => onSelect(node.id)}
+              className="folder-choice flex min-w-0 items-center gap-2 rounded px-2 text-left text-sm text-slate-700"
+            >
+              <Folder aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-600" />
+              <span>{node.name}</span>
+            </button>
+          ) : (
+            <>
+              <Folder className="h-4 w-4 text-brand-500" />
+              <span className="text-sm text-slate-700">{node.name}</span>
+            </>
+          )}
         </div>
         {canManage && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+          <div className={onSelect ? "flex shrink-0 items-center gap-1" : "flex items-center gap-1 opacity-0 group-hover:opacity-100"}>
             <button
               onClick={() => onCreateChild(node)}
-              className="rounded p-1 text-slate-400 hover:bg-brand-50 hover:text-brand-600"
+              className="tree-action rounded p-1 text-slate-500 hover:bg-brand-50 hover:text-brand-600"
               title="Crear subcarpeta"
             >
               <FolderPlus className="h-4 w-4" />
             </button>
             <button
               onClick={() => onDelete(node)}
-              className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+              className="tree-action rounded p-1 text-slate-500 hover:bg-red-50 hover:text-red-600"
               title="Eliminar carpeta"
             >
               <Trash2 className="h-4 w-4" />
@@ -77,6 +92,8 @@ function TreeNode({ node, depth, canManage, onCreateChild, onDelete }) {
             canManage={canManage}
             onCreateChild={onCreateChild}
             onDelete={onDelete}
+            onSelect={onSelect}
+            selectedId={selectedId}
           />
         ))}
     </div>
@@ -85,7 +102,58 @@ function TreeNode({ node, depth, canManage, onCreateChild, onDelete }) {
 
 const TEMPLATE_TOTAL = countTemplateFolders();
 
-export default function Folders() {
+function findFolderPath(tree, id) {
+  for (const node of tree) {
+    if (node.id === id) return [node];
+    const path = findFolderPath(node.children ?? [], id);
+    if (path.length) return [node, ...path];
+  }
+  return [];
+}
+
+function FolderDetails({ folder, onSave }) {
+  const [name, setName] = useState(folder.name);
+  const [notes, setNotes] = useState(folder.notes ?? "");
+  const [saved, setSaved] = useState(false);
+
+  return (
+    <Card title="Nombre y notas de carpeta">
+      <form className="space-y-3" onSubmit={async (event) => {
+        event.preventDefault();
+        if (name.trim() && await onSave(folder.id, { name: name.trim(), notes })) {
+          setName(name.trim());
+          setSaved(true);
+        }
+      }}>
+        <Input label="Nombre de la carpeta" value={name} required onChange={(event) => {
+          setName(event.target.value);
+          setSaved(false);
+        }} />
+        <label className="block text-sm font-medium text-slate-600">
+          Notas de demostración
+          <textarea
+            className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+            rows={3}
+            value={notes}
+            onChange={(event) => {
+              setNotes(event.target.value);
+              setSaved(false);
+            }}
+          />
+        </label>
+        <Button type="submit" disabled={!name.trim() || (name === folder.name && notes === (folder.notes ?? ""))}>
+          Guardar nombre y notas
+        </Button>
+        {saved && <p role="status" className="text-sm text-emerald-700">Cambios guardados en la demo.</p>}
+      </form>
+    </Card>
+  );
+}
+
+export default function Folders({ updateFolder }) {
+  const explorer = Boolean(updateFolder);
+  const [selectedId, setSelectedId] = useState(undefined);
+  const createInput = useRef(null);
   const { companyId, activeCompany, canManage, token } = useAuth();
   const [tree, setTree] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -142,6 +210,12 @@ export default function Folders() {
     setError("");
     try {
       await deleteFolder(node.id);
+      if (findFolderPath(tree, selectedId).some((folder) => folder.id === node.id)) {
+        setSelectedId(undefined);
+      }
+      if (findFolderPath(tree, parent?.id).some((folder) => folder.id === node.id)) {
+        setParent(null);
+      }
       await load();
     } catch (err) {
       setError(parseApiError(err));
@@ -187,16 +261,30 @@ export default function Folders() {
     }
   }
 
+  async function saveFolder(id, changes) {
+    setError("");
+    try {
+      await updateFolder(id, changes);
+      await load();
+      return true;
+    } catch (err) {
+      setError(parseApiError(err));
+      return false;
+    }
+  }
+
+  const path = findFolderPath(tree, selectedId);
+  const selectedFolder = path.at(-1);
+  const scope = selectedFolder ? selectedFolder.id : selectedId === "" ? "" : undefined;
   const isEmpty = !loading && tree.length === 0;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Carpetas</h1>
+          <h1 className="text-2xl font-bold text-slate-800">{explorer ? "Explorador documental" : "Carpetas"}</h1>
           <p className="text-sm text-slate-500">
-            Estructura documental jerárquica del portafolio (subcarpetas
-            ilimitadas).
+            {explorer ? "Consulta documentos y gestiona las carpetas de tu portafolio SST." : "Estructura documental jerárquica del portafolio (subcarpetas ilimitadas)."}
           </p>
         </div>
         {canManage && (
@@ -242,12 +330,59 @@ export default function Folders() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      {explorer && <ErrorBanner message={error} />}
+      <div className={explorer ? "document-explorer" : "grid grid-cols-1 gap-6 lg:grid-cols-3"}>
+        <div className={explorer ? "explorer-tree" : canManage ? "lg:col-span-2" : "lg:col-span-3"}>
+          <Card title="Árbol de carpetas">
+            {!canManage && <ErrorBanner message={error} />}
+            {explorer && (
+              <div className="mb-2 flex flex-wrap gap-2">
+                <Button variant="secondary" aria-pressed={scope === undefined} onClick={() => setSelectedId(undefined)}>Todo el portafolio</Button>
+                <Button variant="secondary" aria-pressed={scope === ""} onClick={() => setSelectedId("")}>Raíz</Button>
+              </div>
+            )}
+            {loading && !explorer ? (
+              <Spinner label="Cargando carpetas..." />
+            ) : tree.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                No hay carpetas todavía.
+                {canManage && " Crea la primera a la izquierda o usa la estructura guía."}
+              </p>
+            ) : (
+              <div className={explorer ? "folder-tree-list space-y-0.5" : "space-y-0.5"}>
+                {tree.map((node) => (
+                  <TreeNode
+                    key={node.id}
+                    node={node}
+                    depth={0}
+                    canManage={canManage}
+                    onCreateChild={(n) => {
+                      setParent({ id: n.id, name: n.name });
+                      if (explorer) createInput.current?.querySelector("input")?.focus();
+                    }}
+                    onDelete={handleDelete}
+                    onSelect={explorer ? setSelectedId : undefined}
+                    selectedId={scope}
+                  />
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+        {explorer && (
+          <section className="explorer-files space-y-4" aria-labelledby="document-location">
+            <h2 id="document-location" className="text-lg font-semibold text-slate-800">
+              {selectedFolder ? path.map((node) => node.name).join(" / ") : scope === "" ? "Raíz del portafolio" : "Todo el portafolio"}
+            </h2>
+            {selectedFolder && <FolderDetails key={`details:${selectedFolder.id}`} folder={selectedFolder} onSave={saveFolder} />}
+            <Files key={`documents:${scope ?? "all"}`} explorer folderScope={scope} folderTree={tree} />
+          </section>
+        )}
         {canManage && (
-          <div className="lg:col-span-1">
+          <div className={explorer ? "explorer-create" : "lg:col-span-1"}>
             <Card title="Nueva carpeta">
-              <ErrorBanner message={error} />
-              <form onSubmit={handleCreate} className="space-y-4">
+              {!explorer && <ErrorBanner message={error} />}
+              <form ref={createInput} onSubmit={handleCreate} className="space-y-4">
                 <Input
                   label="Nombre"
                   required
@@ -279,32 +414,6 @@ export default function Folders() {
           </div>
         )}
 
-        <div className={canManage ? "lg:col-span-2" : "lg:col-span-3"}>
-          <Card title="Árbol de carpetas">
-            {!canManage && <ErrorBanner message={error} />}
-            {loading ? (
-              <Spinner label="Cargando carpetas..." />
-            ) : tree.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                No hay carpetas todavía.
-                {canManage && " Crea la primera a la izquierda o usa la estructura guía."}
-              </p>
-            ) : (
-              <div className="space-y-0.5">
-                {tree.map((node) => (
-                  <TreeNode
-                    key={node.id}
-                    node={node}
-                    depth={0}
-                    canManage={canManage}
-                    onCreateChild={(n) => setParent({ id: n.id, name: n.name })}
-                    onDelete={handleDelete}
-                  />
-                ))}
-              </div>
-            )}
-          </Card>
-        </div>
       </div>
     </div>
   );

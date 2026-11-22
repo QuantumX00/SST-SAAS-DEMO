@@ -14,8 +14,8 @@ function makeCompany(id, name, nit, prefix, documents) {
   return {
     company: { id, name, nit, created_at: timestamp() },
     folders: [
-      { id: folderId, name: "01 · Planificar", parent_id: null },
-      { id: `${id}-evidence`, name: "Evidencias (muestra)", parent_id: folderId },
+      { id: folderId, name: "01 · Planificar", parent_id: null, notes: "Revisar el plan anual y la matriz de riesgos en la próxima reunión de muestra." },
+      { id: `${id}-evidence`, name: "Evidencias (muestra)", parent_id: folderId, notes: "Consolidar los soportes de inducción del ejercicio ficticio." },
       { id: `${id}-verify`, name: "03 · Verificar", parent_id: null },
     ],
     files: documents.map(([label, days], index) => ({

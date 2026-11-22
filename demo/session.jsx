@@ -2,7 +2,7 @@ import { createContext, useContext, useState } from "react";
 import { demoCompanies, selectCompany } from "./client.js";
 
 const DemoContext = createContext(null);
-const user = { email: "gestor@sst.example", role: "Gestor" };
+const user = { name: "Laura Méndez", email: "laura@sst.example", role: "Titular individual · Demo" };
 
 export function DemoSession({ children }) {
   const [companies, setCompanies] = useState(demoCompanies);

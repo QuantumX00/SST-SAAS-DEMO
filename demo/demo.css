@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  height: 100dvh;
 }
 
 .demo-notice {
@@ -17,6 +18,223 @@
   min-height: 0;
 }
 
-.demo aside button {
+.demo aside {
+  overflow-y: auto;
+}
+
+.demo-menu-toggle {
   display: none;
+}
+
+.demo header {
+  min-height: 4rem;
+  height: auto;
+  flex: none;
+  gap: 0.75rem;
+  padding-block: 0.5rem;
+}
+
+.demo header div,
+.demo main .grid > *,
+.demo main form > * {
+  min-width: 0;
+}
+
+.demo header select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.demo main {
+  overflow-wrap: anywhere;
+}
+
+.demo main :is(button, a, select, input:not([type="checkbox"])),
+.demo aside nav a,
+.demo header select {
+  min-height: 44px;
+}
+
+.demo main :is(button[title], .tree-action) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+}
+
+.demo main :is(input, select, textarea) {
+  max-width: 100%;
+}
+
+.demo main .overflow-x-auto {
+  max-width: 100%;
+  overscroll-behavior-inline: contain;
+}
+
+.document-explorer {
+  display: grid;
+  grid-template-areas: "tree" "files" "create";
+  gap: 1rem;
+}
+
+.document-explorer > * {
+  min-width: 0;
+}
+
+.explorer-tree { grid-area: tree; }
+.explorer-files { grid-area: files; }
+.explorer-create { grid-area: create; }
+
+.folder-tree-list {
+  max-height: 23rem;
+  overflow-y: auto;
+}
+
+.document-explorer [aria-pressed="true"] {
+  background: #e0e7ff;
+  color: #312e81;
+}
+
+.document-search,
+.document-search input {
+  width: 100%;
+}
+
+@media (min-width: 1120px) {
+  .document-explorer {
+    grid-template-columns: minmax(19rem, 1fr) minmax(0, 2fr);
+    grid-template-areas: "tree files" "create files";
+    grid-template-rows: auto 1fr;
+    align-items: start;
+  }
+
+  .document-upload {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .demo {
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  .demo > .h-screen,
+  .demo .layout-content {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+
+  .demo aside {
+    width: auto;
+    overflow: visible;
+  }
+
+  .demo .layout-brand {
+    padding: 0.625rem 1rem;
+  }
+
+  .demo-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    margin-left: auto;
+    padding-inline: 0.75rem;
+    border: 1px solid #64748b;
+    border-radius: 0.5rem;
+  }
+
+  .demo aside[data-menu-open="false"] nav {
+    display: none;
+  }
+
+  .demo aside nav {
+    padding-block: 0.5rem;
+  }
+
+  .demo aside > div:last-child > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem 0.75rem;
+    padding: 0.375rem 1rem;
+  }
+
+  .demo header {
+    padding-inline: 1rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .demo header,
+  .demo header > div {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .demo main {
+    padding: 1rem;
+  }
+
+  .demo main .rounded-xl > .p-5,
+  .demo main .rounded-xl > .px-5 {
+    padding-inline: 0.75rem;
+  }
+
+  .demo main :is(input:not([type="checkbox"]), select, textarea) {
+    font-size: 1rem;
+  }
+
+  .demo main input[type="file"] {
+    font-size: 0.875rem;
+  }
+
+  .demo main input[type="file"]::file-selector-button {
+    min-height: 44px;
+    margin-right: 0.5rem;
+    padding-inline: 0.625rem;
+  }
+
+  .demo main table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .demo main table,
+  .demo main table tbody,
+  .demo main table tr,
+  .demo main table td {
+    display: block;
+  }
+
+  .demo main table tbody tr {
+    padding-block: 0.625rem;
+  }
+
+  .demo main table td {
+    padding: 0.25rem 0;
+  }
+
+  .demo main table td[data-label] {
+    display: grid;
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .demo main table td[data-label]::before {
+    content: attr(data-label);
+    color: #475569;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .demo main table td[data-label] > span {
+    justify-self: start;
+  }
 }

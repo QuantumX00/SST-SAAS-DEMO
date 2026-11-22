@@ -78,13 +78,13 @@ export default function Audit() {
                         {log.action}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-slate-600">
+                    <td className="px-3 py-3 text-slate-600" data-label="Detalle">
                       {log.details || "—"}
                     </td>
-                    <td className="px-3 py-3 text-slate-400">
+                    <td className="px-3 py-3 text-slate-400" data-label="IP">
                       {log.ip_address || "—"}
                     </td>
-                    <td className="px-3 py-3 text-slate-500">
+                    <td className="px-3 py-3 text-slate-500" data-label="Fecha">
                       <span className="inline-flex items-center gap-1">
                         <Clock className="h-3.5 w-3.5 text-slate-300" />
                         {new Date(log.timestamp).toLocaleString("es-CO")}

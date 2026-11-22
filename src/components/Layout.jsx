@@ -1,4 +1,5 @@
-import { Link, NavLink, Outlet, useMatch, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink, Outlet, useLocation, useMatch, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Building2,
@@ -7,6 +8,7 @@ import {
   History,
   ShieldCheck,
   LogOut,
+  Menu,
   BookOpen,
   ClipboardCheck,
 } from "lucide-react";
@@ -25,7 +27,17 @@ const navItems = [
   { to: "/trazabilidad", label: "Trazabilidad", icon: History, manage: true },
 ];
 
-export default function Layout() {
+export default function Layout({ demo = false }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const mainRef = useRef(null);
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    if (demo) {
+      mainRef.current?.scrollTo(0, 0);
+      window.scrollTo(0, 0);
+    }
+  }, [demo, pathname]);
   const {
     companies,
     companyId,
@@ -44,7 +56,7 @@ export default function Layout() {
   const hasCompanies = companies.length > 0;
 
   // Oculta las secciones de gestión a los roles sin permiso (Vista_Auditoria).
-  const visibleNav = navItems.filter((item) => !item.manage || canManage);
+  const visibleNav = navItems.filter((item) => (!item.manage || canManage) && (!demo || item.to !== "/carpetas"));
 
   function handleLogout() {
     logout();
@@ -87,20 +99,29 @@ export default function Layout() {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 shrink-0 bg-slate-900 text-slate-100 flex flex-col">
-        <div className="flex items-center gap-2 px-6 py-5 border-b border-slate-800">
+      <aside data-menu-open={menuOpen} className="w-64 shrink-0 bg-slate-900 text-slate-100 flex flex-col">
+        <div className="layout-brand flex items-center gap-2 px-6 py-5 border-b border-slate-800">
           <ShieldCheck className="h-7 w-7 text-brand-500" />
           <div>
             <p className="font-semibold leading-tight">SST SaaS</p>
             <p className="text-xs text-slate-400">Gestión documental</p>
           </div>
+          {demo && (
+            <button type="button" className="demo-menu-toggle" aria-expanded={menuOpen} aria-controls="layout-navigation" onClick={() => setMenuOpen(!menuOpen)}>
+              <Menu aria-hidden="true" className="h-5 w-5" /> Menú
+            </button>
+          )}
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav id="layout-navigation" aria-label="Navegación principal" className="flex-1 px-3 py-4 space-y-1">
           {visibleNav.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}
+              onClick={() => {
+                setMenuOpen(false);
+                if (demo) mainRef.current?.focus({ preventScroll: true });
+              }}
               end={end}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
@@ -111,7 +132,7 @@ export default function Layout() {
               }
             >
               <Icon className="h-5 w-5" />
-              {label}
+              {demo && to === "/archivos" ? "Explorador documental" : label}
             </NavLink>
           ))}
         </nav>
@@ -120,25 +141,25 @@ export default function Layout() {
           {user && (
             <div className="px-6 py-3">
               <p className="truncate text-sm font-medium text-slate-200">
-                {user.email}
+                {demo ? user.name : user.email}
               </p>
               <span className="mt-0.5 inline-flex rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">
                 {user.role}
               </span>
             </div>
           )}
-          <button
+          {!demo && <button
             onClick={handleLogout}
             className="flex w-full items-center gap-3 px-6 py-4 text-sm text-slate-300 hover:text-white"
           >
             <LogOut className="h-5 w-5" />
             Cerrar sesión
-          </button>
+          </button>}
         </div>
       </aside>
 
       {/* Contenido */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="layout-content min-w-0 flex-1 flex flex-col overflow-hidden">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6">
           <h1 className="text-sm font-medium text-slate-500">
             Portafolio documental SST
@@ -168,7 +189,7 @@ export default function Layout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main ref={mainRef} tabIndex={demo ? -1 : undefined} className="flex-1 overflow-y-auto p-6">
           {content}
         </main>
       </div>

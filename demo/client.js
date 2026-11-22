@@ -68,6 +68,19 @@ async function request(method, path, payload, config) {
   if (resource === "folders") {
     if (method === "GET") return { data: folderTree(portfolio) };
     if (method === "POST") return { data: add(folders, payload) };
+    if (method === "PATCH") {
+      const folder = byId(folders, id);
+      const { name, notes } = payload;
+      if (typeof name === "string" && name.trim() && name.trim() !== folder.name) {
+        log(portfolio, "RENOMBRAR_CARPETA", `${folder.name} → ${name.trim()}`);
+        folder.name = name.trim();
+      }
+      if (typeof notes === "string" && notes !== (folder.notes ?? "")) {
+        folder.notes = notes;
+        log(portfolio, "EDITAR_NOTA", folder.name);
+      }
+      return { data: folder };
+    }
     if (method === "DELETE") {
       const folder = byId(folders, id);
       removeFolder(portfolio, id);

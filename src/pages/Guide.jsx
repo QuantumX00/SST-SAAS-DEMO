@@ -97,7 +97,15 @@ const statusGuide = [
   },
 ];
 
-export default function Guide() {
+const explorerSteps = {
+  "/empresas": { desc: "Registra las empresas de tu portafolio y elige con cuál trabajar en el selector Empresa activa." },
+  "/carpetas": { to: "/archivos", cta: "Abrir explorador documental" },
+  "/archivos": { desc: "Abre una carpeta para consultar y cargar documentos de muestra. Puedes editar su nombre y sus notas desde la misma vista.", cta: "Abrir explorador documental" },
+  "/trazabilidad": { desc: "Consulta el historial de operaciones simuladas, como cargas, descargas, eliminaciones y cambios de carpeta." },
+};
+
+export default function Guide({ explorer = false }) {
+  const visibleSteps = explorer ? steps.map((step) => ({ ...step, ...explorerSteps[step.to] })) : steps;
   return (
     <div className="space-y-6">
       {/* Encabezado */}
@@ -123,7 +131,7 @@ export default function Guide() {
           ¿Por dónde empiezo?
         </h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {steps.map((step) => (
+          {visibleSteps.map((step) => (
             <div
               key={step.title}
               className="flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
