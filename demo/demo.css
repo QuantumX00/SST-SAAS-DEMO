@@ -1,0 +1,22 @@
+.demo {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.demo-notice {
+  background: #fef3c7;
+  color: #78350f;
+  padding: 0.5rem 1rem;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.demo > .h-screen {
+  flex: 1;
+  min-height: 0;
+}
+
+.demo aside button {
+  display: none;
+}
